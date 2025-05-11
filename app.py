@@ -2,15 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import cv2 as cv
-import os
 from tkinter import filedialog
 import customtkinter as ctk
 
 class App:
     def __init__(self, master):
         self.master = master
-        self.master.title("Image Processing App")
-        self.master.geometry("1200x800")
+        self.master.title("Image Enhancer App")
+        self.master.geometry("1500x710")
         self.master.resizable(False, False)
         self.master.grid_columnconfigure([0, 1], weight=1)
         
@@ -18,8 +17,10 @@ class App:
         self.frame_1 = ctk.CTkFrame(self.master)
         self.frame_1.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
-        self.frame_2 = ctk.CTkFrame(self.master)
+        self.frame_2 = ctk.CTkScrollableFrame(self.master)
         self.frame_2.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+
+        # FRAME 1
 
         # Button Frame
         self.frame = ctk.CTkFrame(self.frame_1, fg_color="transparent")
@@ -69,6 +70,26 @@ class App:
         self.button3 = ctk.CTkButton(self.frame_1, text="Crop Image", command=self.crop_image)
         self.button3.pack(pady=20)
 
+        # FRAME 2
+
+        label = ctk.CTkLabel(self.frame_2, text="Image Enhaced with Brightness Method")
+        label.pack(pady=20)
+        self.brightness_frame = ctk.CTkFrame(self.frame_2, fg_color="transparent")
+        self.brightness_frame.pack(pady=20)
+
+        self.brightness_canvas = ctk.CTkCanvas(self.brightness_frame, width=400, height=400)
+        self.brightness_canvas.pack()
+
+        label = ctk.CTkLabel(self.frame_2, text="Image Enhaced with Sharpness Method")
+        label.pack(pady=20)
+        self.sharpness_frame = ctk.CTkFrame(self.frame_2, fg_color="transparent")
+        self.sharpness_frame.pack(pady=20)
+
+        self.sharpness_canvas = ctk.CTkCanvas(self.sharpness_frame, width=400, height=400)
+        self.sharpness_canvas.pack()
+
+        
+
     def load_image(self):        
         self.input_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
         if self.input_path:
@@ -82,41 +103,38 @@ class App:
             self.image_plot = FigureCanvasTkAgg(plt.Figure(figsize=(4, 4), dpi=100), master=self.canvas)
             self.image_plot.get_tk_widget().pack(side="top", fill="both", expand=True)
             self.ax = self.image_plot.figure.add_subplot(111)
-            self.ax.imshow(self.image)
             self.ax.set_title("Original Image")
-            self.ax.set(xlabel="px", ylabel="px")
+            self.ax.imshow(self.image)
 
     def crop_image(self):
         if hasattr(self, 'image'):
             try:
                 h, w, _ = self.image.shape
 
-                # Get user input and convert to integers
                 x1 = int(self.x_input_1.get())
                 y1 = int(self.y_input_1.get())
                 x2 = int(self.x_input_2.get())
                 y2 = int(self.y_input_2.get())
 
-                # Ensure x1 < x2 and y1 < y2
                 x1, x2 = sorted([x1, x2])
                 y1, y2 = sorted([y1, y2])
 
-                # Clip values to image bounds
                 x1 = max(0, min(x1, w))
                 x2 = max(0, min(x2, w))
                 y1 = max(0, min(y1, h))
                 y2 = max(0, min(y2, h))
 
-                cropped_image = self.image[y1:y2, x1:x2]
+                self.image = self.image[y1:y2, x1:x2]
 
                 # Update plot
                 self.ax.clear()
-                self.ax.imshow(cropped_image)
-                self.ax.set_title("Cropped Image")
-                self.ax.set(xlabel="px", ylabel="px")
+                self.ax.imshow(self.image)
                 self.image_plot.draw()
             except Exception as e:
                 print("Error during cropping:", e)
+
+    def enhance_image(self):
+        return
 
 
 if __name__ == "__main__":

@@ -1,1 +1,1 @@
-, w
+fg_color
