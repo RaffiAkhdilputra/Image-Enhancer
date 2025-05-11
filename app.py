@@ -7,6 +7,10 @@ import customtkinter as ctk
 
 class App:
     def __init__(self, master):
+        self.image = None
+        self._brightness_proccess = list()
+        self._sharpness_proccess = list()
+
         self.master = master
         self.master.title("Image Enhancer App")
         self.master.geometry("1500x710")
@@ -31,7 +35,7 @@ class App:
         self.button1 = ctk.CTkButton(self.frame, text="Load Image", command=self.load_image)
         self.button1.grid(row=0, column=0, padx=10)
 
-        self.button2 = ctk.CTkButton(self.frame, text="Enhance Image")
+        self.button2 = ctk.CTkButton(self.frame, text="Enhance Image", command=self.enhance_image)
         self.button2.grid(row=0, column=1, padx=10)
 
         # Image display
@@ -71,24 +75,40 @@ class App:
         self.button3.pack(pady=20)
 
         # FRAME 2
-
-        label = ctk.CTkLabel(self.frame_2, text="Image Enhaced with Brightness Method")
+        label = ctk.CTkLabel(self.frame_2, text="Image Enhanced with Brightness Method")
         label.pack(pady=20)
-        self.brightness_frame = ctk.CTkFrame(self.frame_2, fg_color="transparent")
-        self.brightness_frame.pack(pady=20)
 
-        self.brightness_canvas = ctk.CTkCanvas(self.brightness_frame, width=400, height=400)
-        self.brightness_canvas.pack()
+        self.tab_1 = ctk.CTkTabview(self.frame_2, width=400, height=400)
+        self.tab_1.pack(pady=20, padx=20, fill="both", expand=True)
 
         label = ctk.CTkLabel(self.frame_2, text="Image Enhaced with Sharpness Method")
         label.pack(pady=20)
-        self.sharpness_frame = ctk.CTkFrame(self.frame_2, fg_color="transparent")
+
+        self.tab_2 = ctk.CTkTabview(self.frame_2, width=400, height=400)
+        self.tab_2.pack(pady=20, padx=20, fill="both", expand=True)
+
+        self.tab_1.add("View Transformation")
+        self.tab_1.add("Output")
+        self.tab_2.add("View Transformation")
+        self.tab_2.add("Output")
+
+        output_tab_1 = self.tab_1.tab("Output")
+        view_tab_1 = self.tab_1.tab("View Transformation")
+
+        self.brightness_frame = ctk.CTkFrame(output_tab_1, fg_color="transparent")
+        self.brightness_frame.pack(pady=20)
+
+        self.brightness_canvas = ctk.CTkCanvas(self.brightness_frame, width=300, height=300)
+        self.brightness_canvas.pack()
+
+        output_tab_2 = self.tab_2.tab("Output")
+        view_tab_2 = self.tab_2.tab("View Transformation")
+
+        self.sharpness_frame = ctk.CTkFrame(output_tab_2, fg_color="transparent")
         self.sharpness_frame.pack(pady=20)
 
-        self.sharpness_canvas = ctk.CTkCanvas(self.sharpness_frame, width=400, height=400)
+        self.sharpness_canvas = ctk.CTkCanvas(self.sharpness_frame, width=300, height=300)
         self.sharpness_canvas.pack()
-
-        
 
     def load_image(self):        
         self.input_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
@@ -105,6 +125,9 @@ class App:
             self.ax = self.image_plot.figure.add_subplot(111)
             self.ax.set_title("Original Image")
             self.ax.imshow(self.image)
+
+            self._brightness_proccess.append(self.image.copy())
+            self._sharpness_proccess.append(self.image.copy())
 
     def crop_image(self):
         if hasattr(self, 'image'):
@@ -125,6 +148,8 @@ class App:
                 y2 = max(0, min(y2, h))
 
                 self.image = self.image[y1:y2, x1:x2]
+                self._brightness_proccess[0] = self.image.copy()
+                self._sharpness_proccess[0] = self.image.copy()
 
                 # Update plot
                 self.ax.clear()
@@ -134,9 +159,30 @@ class App:
                 print("Error during cropping:", e)
 
     def enhance_image(self):
-        return
+        base_image = self.image.copy()
+        brightness_enhancement = cv.convertScaleAbs(base_image, alpha=1.5, beta=0)
+        sharpness_enhancement = cv.addWeighted(base_image, 1.5, base_image, -0.5, 0)
 
+        self._brightness_proccess.append(brightness_enhancement)
+        self._sharpness_proccess.append(sharpness_enhancement)
+        
+        self.brightness_canvas = FigureCanvasTkAgg(plt.Figure(figsize=(3, 3), dpi=100), master=self.brightness_frame)
+        self.brightness_canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
+        self.brightness_ax = self.brightness_canvas.figure.add_subplot(111)
+        self.brightness_ax.set_title("Brightness Enhancement")
+        self.brightness_ax.imshow(brightness_enhancement)
+        self.brightness_canvas.draw()
 
+        self.sharpness_canvas = FigureCanvasTkAgg(plt.Figure(figsize=(3, 3), dpi=100), master=self.sharpness_frame)
+        self.sharpness_canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
+        self.sharpness_ax = self.sharpness_canvas.figure.add_subplot(111)
+        self.sharpness_ax.set_title("Sharpness Enhancement")
+        self.sharpness_ax.imshow(sharpness_enhancement)
+        self.sharpness_canvas.draw()
+
+        print(self._brightness_proccess)
+        print(self._sharpness_proccess)
+        
 if __name__ == "__main__":
     root = ctk.CTk()
     app = App(root)
