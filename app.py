@@ -166,6 +166,9 @@ class App:
         self._brightness_proccess.append(brightness_enhancement)
         self._sharpness_proccess.append(sharpness_enhancement)
         
+        self.brightness_canvas.destroy()
+        self.sharpness_canvas.destroy()
+
         self.brightness_canvas = FigureCanvasTkAgg(plt.Figure(figsize=(3, 3), dpi=100), master=self.brightness_frame)
         self.brightness_canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
         self.brightness_ax = self.brightness_canvas.figure.add_subplot(111)
