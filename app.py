@@ -4,7 +4,6 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import cv2 as cv
 from tkinter import filedialog
 import customtkinter as ctk
-from PIL import Image, ImageTk
 
 class App:
     def __init__(self, master):
@@ -152,14 +151,21 @@ class App:
                 self.brightness_canvas.get_tk_widget().destroy()
                 self.brightness_canvas = None
                 self.brigthness_histogram_btn.destroy()
+                self.brightness_download_btn.destroy()
+
+                self.tf_brigthness_canvas.get_tk_widget().destroy()
+                self.tf_brigthness_canvas = None
                 self.stop_brightness_slideshow()
 
             if hasattr(self, 'sharpness_canvas') and self.sharpness_canvas is not None:
                 self.sharpness_canvas.get_tk_widget().destroy()
                 self.sharpness_canvas = None
                 self.sharpness_histogram_btn.destroy()
-                self.stop_sharpness_slideshow()
+                self.sharpness_download_btn.destroy()
 
+                self.tf_sharpness_canvas.get_tk_widget().destroy()
+                self.tf_sharpness_canvas = None
+                self.stop_sharpness_slideshow()
 
     def crop_image(self):
         if hasattr(self, 'image'):
@@ -211,8 +217,25 @@ class App:
             self._brightness_proccess = [self.image.copy()]
             self._sharpness_proccess = [self.image.copy()]
 
-            # self.stop_brightness_slideshow()
-            # self.stop_sharpness_slideshow() 
+        if hasattr(self, 'brightness_canvas') and self.brightness_canvas is not None:
+            self.brightness_canvas.get_tk_widget().destroy()
+            self.brightness_canvas = None
+            self.brigthness_histogram_btn.destroy()
+            self.brightness_download_btn.destroy()
+
+            self.stop_brightness_slideshow()
+            self.tf_brigthness_canvas.get_tk_widget().destroy()
+            self.tf_brigthness_canvas = None
+
+        if hasattr(self, 'sharpness_canvas') and self.sharpness_canvas is not None:
+            self.sharpness_canvas.get_tk_widget().destroy()
+            self.sharpness_canvas = None
+            self.sharpness_histogram_btn.destroy()
+            self.sharpness_download_btn.destroy()
+
+            self.stop_sharpness_slideshow()
+            self.tf_sharpness_canvas.get_tk_widget().destroy()
+            self.tf_sharpness_canvas = None
 
     def enhance_image(self):
         for i in range(self.MAX_STEPS):
@@ -222,7 +245,6 @@ class App:
             self._brightness_proccess.append(bright_img)
             self._sharpness_proccess.append(sharp_img)
 
-        # Safely destroy existing canvases
         if isinstance(self.brightness_canvas, FigureCanvasTkAgg):
             self.brightness_canvas.get_tk_widget().destroy()
             self.brightness_canvas = None
@@ -240,8 +262,12 @@ class App:
         self.brightness_ax.axis("off")
         self.brightness_canvas.draw()
 
-        self.brigthness_histogram_btn = ctk.CTkButton(self.output_brightness_frame, text="Show Histogram", command=lambda:self.show_histogram(self._brightness_proccess[self.MAX_STEPS-1]))
-        self.brigthness_histogram_btn.pack(pady=10)
+        frame = ctk.CTkFrame(self.output_brightness_frame, fg_color="transparent")
+        frame.pack(pady=20)
+        self.brigthness_histogram_btn = ctk.CTkButton(frame, text="Show Histogram", command=lambda:self.show_histogram(self._brightness_proccess[self.MAX_STEPS-1]))
+        self.brigthness_histogram_btn.grid(row=0, column=0, padx=10)
+        self.brightness_download_btn = ctk.CTkButton(frame, text="Download", command=lambda:self.download_image(self._brightness_proccess[self.MAX_STEPS-1]))
+        self.brightness_download_btn.grid(row=0, column=1, padx=10)
 
         # Sharpness canvas
         self.sharpness_canvas = FigureCanvasTkAgg(plt.Figure(figsize=(3, 3), dpi=100), master=self.output_sharpness_frame)
@@ -252,17 +278,19 @@ class App:
         self.sharpness_ax.axis("off")
         self.sharpness_canvas.draw()
 
-        self.sharpness_histogram_btn = ctk.CTkButton(self.output_sharpness_frame, text="Show Histogram", command=lambda:self.show_histogram(self._sharpness_proccess[self.MAX_STEPS-1]))
-        self.sharpness_histogram_btn.pack(pady=10)
+        frame = ctk.CTkFrame(self.output_sharpness_frame, fg_color="transparent")
+        frame.pack(pady=20)
+        self.sharpness_histogram_btn = ctk.CTkButton(frame, text="Show Histogram", command=lambda:self.show_histogram(self._sharpness_proccess[self.MAX_STEPS-1]))
+        self.sharpness_histogram_btn.grid(row=0, column=0, padx=10)
+
+        self.sharpness_download_btn = ctk.CTkButton(frame, text="Download", command=lambda:self.download_image(self._sharpness_proccess[self.MAX_STEPS-1]))
+        self.sharpness_download_btn.grid(row=0, column=1, padx=10)
 
         # print(self._brightness_proccess)
         # print(self._sharpness_proccess)
 
         # View Transformation
         # Brigthness
-        if hasattr(self, "tf_brigthness_canvas"):
-            self.tf_brigthness_canvas.get_tk_widget().destroy()
-
         self.tf_brigthness_canvas = FigureCanvasTkAgg(plt.Figure(figsize=(3, 3), dpi=100), master=self.view_brightness_frame)
         self.tf_brigthness_canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
         self.tf_brightness_ax = self.tf_brigthness_canvas.figure.add_subplot(111)
@@ -271,9 +299,6 @@ class App:
         self.start_brightness_slideshow()
 
         # sharpness
-        if hasattr(self, "tf_sharpness_canvas"):
-            self.tf_sharpness_canvas.get_tk_widget().destroy()
-
         self.tf_sharpness_canvas = FigureCanvasTkAgg(plt.Figure(figsize=(3, 3), dpi=100), master=self.view_sharpness_frame)
         self.tf_sharpness_canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
         self.tf_sharpness_ax = self.tf_sharpness_canvas.figure.add_subplot(111)
@@ -301,7 +326,6 @@ class App:
         self.tf_brightness_ax.imshow(self._brightness_proccess[step])
         self.tf_brigthness_canvas.draw()
 
-        # Simpan ID after agar bisa dihentikan nanti
         self.brightness_after_id = self.master.after(1000, lambda: self.start_brightness_slideshow(step + 1))
 
 
@@ -328,16 +352,13 @@ class App:
             self.master.after_cancel(self.sharpness_after_id)
             self.sharpness_after_id = None
 
-
     def show_histogram(self, image):
-        # Safely destroy previous canvas if it exists and is valid
         if hasattr(self, 'histogram_canvas') and self.histogram_canvas is not None:
             widget = self.histogram_canvas.get_tk_widget()
             if widget.winfo_exists():
                 widget.destroy()
             self.histogram_canvas = None
 
-        # Create histogram figure
         fig, ax = plt.subplots(1, 2, figsize=(10, 5), dpi=100, tight_layout=True)
 
         ax[0].set_title("Original Histogram")
@@ -346,13 +367,24 @@ class App:
         ax[1].set_title("Result Histogram")
         ax[1].hist(image.ravel(), bins=256, range=[0, 256], color='gray')
 
-        # Create a new canvas for the histogram
         new_window = ctk.CTkToplevel(self.master)
         new_window.title("Histogram")
 
         self.histogram_canvas = FigureCanvasTkAgg(fig, master=new_window)
         self.histogram_canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
         self.histogram_canvas.draw()
+
+    def download_image(self, image):
+        try:
+            download_path = filedialog.asksaveasfilename(
+                defaultextension=".png", 
+                filetypes=[("PNG files", "*.png"), ("JPEG files", "*.jpg")]
+            )
+            if download_path:
+                cv.imwrite(download_path, cv.cvtColor(image, cv.COLOR_RGB2BGR))
+        except Exception as e:
+            print("Error during download:", e)
+
 
 if __name__ == "__main__":
     root = ctk.CTk()
