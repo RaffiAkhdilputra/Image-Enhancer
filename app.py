@@ -33,7 +33,6 @@ class App:
         self.frame_2.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
 
         # FRAME 1
-
         # Button Frame
         self.frame = ctk.CTkFrame(self.frame_1, fg_color="transparent")
         self.frame.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
@@ -194,7 +193,6 @@ class App:
                 self._brightness_proccess = [self.image.copy()]
                 self._sharpness_proccess = [self.image.copy()]
 
-                # Update plot
                 self.ax.clear()
                 self.ax.imshow(self.image)
                 self.image_plot.draw()
@@ -298,7 +296,7 @@ class App:
 
         self.start_brightness_slideshow()
 
-        # sharpness
+        # Sharpness
         self.tf_sharpness_canvas = FigureCanvasTkAgg(plt.Figure(figsize=(3, 3), dpi=100), master=self.view_sharpness_frame)
         self.tf_sharpness_canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
         self.tf_sharpness_ax = self.tf_sharpness_canvas.figure.add_subplot(111)
@@ -307,12 +305,12 @@ class App:
         self.start_sharpness_slideshow()
 
     def brightness_enhancement(self, base_img, step:int):
-        alpha = 1.0  # Keep contrast constant
-        beta = step * 25  # Increase brightness linearly
+        alpha = 1.0
+        beta = step * 25
         return cv.convertScaleAbs(base_img, alpha=alpha, beta=beta)
         
     def sharpness_enhancement(self, base_img, step:int):
-        factor = 1.0 + (step * 0.2)  # 1.0 to 1.8
+        factor = 1.0 + (step * 0.2)
         return cv.addWeighted(base_img, factor, base_img, -0.5, 0)
 
     def start_brightness_slideshow(self, step=0):
@@ -384,7 +382,6 @@ class App:
                 cv.imwrite(download_path, cv.cvtColor(image, cv.COLOR_RGB2BGR))
         except Exception as e:
             print("Error during download:", e)
-
 
 if __name__ == "__main__":
     root = ctk.CTk()
