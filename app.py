@@ -8,6 +8,8 @@ from PIL import Image, ImageTk
 
 class App:
     def __init__(self, master):
+        self.brightness_after_id = None
+        self.sharpness_after_id = None
         self.MAX_STEPS = 5
         self.brightness_step = 1
         self.sharpness_step = 1
@@ -78,8 +80,14 @@ class App:
         self.y_input_2 = ctk.CTkEntry(frame_y, placeholder_text="Y2 Coordinate")
         self.y_input_2.grid(row=1, column=3, padx=10)
 
-        self.button3 = ctk.CTkButton(self.frame_1, text="Crop Image", command=self.crop_image)
-        self.button3.pack(pady=20)
+        btn_frame = ctk.CTkFrame(self.frame_1, fg_color="transparent")
+        btn_frame.pack(pady=20)
+
+        self.button3 = ctk.CTkButton(btn_frame, text="Crop Image", command=self.crop_image)
+        self.button3.grid(row=0, column=0, padx=10)
+
+        self.button4 = ctk.CTkButton(btn_frame, text="Reset", command=self.reset)
+        self.button4.grid(row=0, column=1, padx=10)
 
         # FRAME 2
         label = ctk.CTkLabel(self.frame_2, text="Image Enhanced with Brightness Method")
@@ -102,19 +110,19 @@ class App:
         output_tab_1 = self.tab_1.tab("Output")
         view_tab_1 = self.tab_1.tab("View Transformation")
 
-        self.output_brightness_frame = ctk.CTkFrame(output_tab_1, fg_color="transparent")
+        self.output_brightness_frame = ctk.CTkFrame(output_tab_1)
         self.output_brightness_frame.pack(pady=20)
 
-        self.view_brightness_frame = ctk.CTkFrame(view_tab_1, fg_color="transparent")
+        self.view_brightness_frame = ctk.CTkFrame(view_tab_1)
         self.view_brightness_frame.pack(pady=20)
 
         output_tab_2 = self.tab_2.tab("Output")
         view_tab_2 = self.tab_2.tab("View Transformation")
 
-        self.output_sharpness_frame = ctk.CTkFrame(output_tab_2, fg_color="transparent")
+        self.output_sharpness_frame = ctk.CTkFrame(output_tab_2)
         self.output_sharpness_frame.pack(pady=20)
 
-        self.view_sharpness_frame = ctk.CTkFrame(view_tab_2, fg_color="transparent")
+        self.view_sharpness_frame = ctk.CTkFrame(view_tab_2)
         self.view_sharpness_frame.pack(pady=20)
 
     def load_image(self):        
@@ -143,10 +151,14 @@ class App:
             if hasattr(self, 'brightness_canvas') and self.brightness_canvas is not None:
                 self.brightness_canvas.get_tk_widget().destroy()
                 self.brightness_canvas = None
+                self.brigthness_histogram_btn.destroy()
+                self.stop_brightness_slideshow()
 
             if hasattr(self, 'sharpness_canvas') and self.sharpness_canvas is not None:
                 self.sharpness_canvas.get_tk_widget().destroy()
                 self.sharpness_canvas = None
+                self.sharpness_histogram_btn.destroy()
+                self.stop_sharpness_slideshow()
 
 
     def crop_image(self):
@@ -183,6 +195,24 @@ class App:
             except Exception as e:
                 print("Error during cropping:", e)
 
+    def reset(self):
+        if hasattr(self, 'image'):
+            self.image = cv.imread(self.input_path)
+            self.image = cv.cvtColor(self.image, cv.COLOR_BGR2RGB)
+
+            self.ax.clear()
+            self.ax.imshow(self.image)
+            self.image_plot.draw()
+
+            if len(self._brightness_proccess) != 0:
+                self._brightness_proccess[:].pop()
+                self._sharpness_proccess[:].pop()
+
+            self._brightness_proccess = [self.image.copy()]
+            self._sharpness_proccess = [self.image.copy()]
+
+            # self.stop_brightness_slideshow()
+            # self.stop_sharpness_slideshow() 
 
     def enhance_image(self):
         for i in range(self.MAX_STEPS):
@@ -210,6 +240,9 @@ class App:
         self.brightness_ax.axis("off")
         self.brightness_canvas.draw()
 
+        self.brigthness_histogram_btn = ctk.CTkButton(self.output_brightness_frame, text="Show Histogram", command=lambda:self.show_histogram(self._brightness_proccess[self.MAX_STEPS-1]))
+        self.brigthness_histogram_btn.pack(pady=10)
+
         # Sharpness canvas
         self.sharpness_canvas = FigureCanvasTkAgg(plt.Figure(figsize=(3, 3), dpi=100), master=self.output_sharpness_frame)
         self.sharpness_canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
@@ -219,11 +252,13 @@ class App:
         self.sharpness_ax.axis("off")
         self.sharpness_canvas.draw()
 
+        self.sharpness_histogram_btn = ctk.CTkButton(self.output_sharpness_frame, text="Show Histogram", command=lambda:self.show_histogram(self._sharpness_proccess[self.MAX_STEPS-1]))
+        self.sharpness_histogram_btn.pack(pady=10)
+
         # print(self._brightness_proccess)
         # print(self._sharpness_proccess)
 
         # View Transformation
-
         # Brigthness
         if hasattr(self, "tf_brigthness_canvas"):
             self.tf_brigthness_canvas.get_tk_widget().destroy()
@@ -255,33 +290,69 @@ class App:
         factor = 1.0 + (step * 0.2)  # 1.0 to 1.8
         return cv.addWeighted(base_img, factor, base_img, -0.5, 0)
 
-    def start_brightness_slideshow(self, step = 0):
+    def start_brightness_slideshow(self, step=0):
         if not self._brightness_proccess:
             return
 
         step %= self.MAX_STEPS
-
         self.tf_brightness_ax.clear()
         self.tf_brightness_ax.set_title("Brightness Transformation")
         self.tf_brightness_ax.axis("off")
         self.tf_brightness_ax.imshow(self._brightness_proccess[step])
         self.tf_brigthness_canvas.draw()
 
-        self.master.after(1000, lambda: self.start_brightness_slideshow(step + 1))
+        # Simpan ID after agar bisa dihentikan nanti
+        self.brightness_after_id = self.master.after(1000, lambda: self.start_brightness_slideshow(step + 1))
+
 
     def start_sharpness_slideshow(self, step=0):
         if not self._sharpness_proccess:
             return
 
         step %= self.MAX_STEPS
-
         self.tf_sharpness_ax.clear()
         self.tf_sharpness_ax.set_title("Sharpness Transformation")
         self.tf_sharpness_ax.axis("off")
         self.tf_sharpness_ax.imshow(self._sharpness_proccess[step])
         self.tf_sharpness_canvas.draw()
 
-        self.master.after(1000, lambda: self.start_sharpness_slideshow(step + 1))
+        self.sharpness_after_id = self.master.after(1000, lambda: self.start_sharpness_slideshow(step + 1))
+
+    def stop_brightness_slideshow(self):
+        if self.brightness_after_id is not None:
+            self.master.after_cancel(self.brightness_after_id)
+            self.brightness_after_id = None
+
+    def stop_sharpness_slideshow(self):
+        if self.sharpness_after_id is not None:
+            self.master.after_cancel(self.sharpness_after_id)
+            self.sharpness_after_id = None
+
+
+    def show_histogram(self, image):
+        # Safely destroy previous canvas if it exists and is valid
+        if hasattr(self, 'histogram_canvas') and self.histogram_canvas is not None:
+            widget = self.histogram_canvas.get_tk_widget()
+            if widget.winfo_exists():
+                widget.destroy()
+            self.histogram_canvas = None
+
+        # Create histogram figure
+        fig, ax = plt.subplots(1, 2, figsize=(10, 5), dpi=100, tight_layout=True)
+
+        ax[0].set_title("Original Histogram")
+        ax[0].hist(self.image.ravel(), bins=256, range=[0, 256], color='blue')
+
+        ax[1].set_title("Result Histogram")
+        ax[1].hist(image.ravel(), bins=256, range=[0, 256], color='gray')
+
+        # Create a new canvas for the histogram
+        new_window = ctk.CTkToplevel(self.master)
+        new_window.title("Histogram")
+
+        self.histogram_canvas = FigureCanvasTkAgg(fig, master=new_window)
+        self.histogram_canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
+        self.histogram_canvas.draw()
 
 if __name__ == "__main__":
     root = ctk.CTk()
