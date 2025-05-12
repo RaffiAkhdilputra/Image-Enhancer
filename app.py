@@ -4,12 +4,19 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import cv2 as cv
 from tkinter import filedialog
 import customtkinter as ctk
+from PIL import Image, ImageTk
 
 class App:
     def __init__(self, master):
-        self.image = None
-        self._brightness_proccess = list()
-        self._sharpness_proccess = list()
+        self.MAX_STEPS = 5
+        self.brightness_step = 1
+        self.sharpness_step = 1
+        self.brightness_animation_label = None
+        self.sharpness_animation_label = None
+        self.brightness_canvas = None
+        self.sharpness_canvas = None
+        self._brightness_proccess = []
+        self._sharpness_proccess = []
 
         self.master = master
         self.master.title("Image Enhancer App")
@@ -95,20 +102,20 @@ class App:
         output_tab_1 = self.tab_1.tab("Output")
         view_tab_1 = self.tab_1.tab("View Transformation")
 
-        self.brightness_frame = ctk.CTkFrame(output_tab_1, fg_color="transparent")
-        self.brightness_frame.pack(pady=20)
+        self.output_brightness_frame = ctk.CTkFrame(output_tab_1, fg_color="transparent")
+        self.output_brightness_frame.pack(pady=20)
 
-        self.brightness_canvas = ctk.CTkCanvas(self.brightness_frame, width=300, height=300)
-        self.brightness_canvas.pack()
+        self.view_brightness_frame = ctk.CTkFrame(view_tab_1, fg_color="transparent")
+        self.view_brightness_frame.pack(pady=20)
 
         output_tab_2 = self.tab_2.tab("Output")
         view_tab_2 = self.tab_2.tab("View Transformation")
 
-        self.sharpness_frame = ctk.CTkFrame(output_tab_2, fg_color="transparent")
-        self.sharpness_frame.pack(pady=20)
+        self.output_sharpness_frame = ctk.CTkFrame(output_tab_2, fg_color="transparent")
+        self.output_sharpness_frame.pack(pady=20)
 
-        self.sharpness_canvas = ctk.CTkCanvas(self.sharpness_frame, width=300, height=300)
-        self.sharpness_canvas.pack()
+        self.view_sharpness_frame = ctk.CTkFrame(view_tab_2, fg_color="transparent")
+        self.view_sharpness_frame.pack(pady=20)
 
     def load_image(self):        
         self.input_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
@@ -126,8 +133,21 @@ class App:
             self.ax.set_title("Original Image")
             self.ax.imshow(self.image)
 
-            self._brightness_proccess.append(self.image.copy())
-            self._sharpness_proccess.append(self.image.copy())
+            if len(self._brightness_proccess) != 0:
+                self._brightness_proccess[:].pop()
+                self._sharpness_proccess[:].pop()
+
+            self._brightness_proccess = [self.image.copy()]
+            self._sharpness_proccess = [self.image.copy()]
+
+            if hasattr(self, 'brightness_canvas') and self.brightness_canvas is not None:
+                self.brightness_canvas.get_tk_widget().destroy()
+                self.brightness_canvas = None
+
+            if hasattr(self, 'sharpness_canvas') and self.sharpness_canvas is not None:
+                self.sharpness_canvas.get_tk_widget().destroy()
+                self.sharpness_canvas = None
+
 
     def crop_image(self):
         if hasattr(self, 'image'):
@@ -148,8 +168,13 @@ class App:
                 y2 = max(0, min(y2, h))
 
                 self.image = self.image[y1:y2, x1:x2]
-                self._brightness_proccess[0] = self.image.copy()
-                self._sharpness_proccess[0] = self.image.copy()
+
+                if len(self._brightness_proccess) != 1:
+                    self._brightness_proccess[:].pop()
+                    self._sharpness_proccess[:].pop()
+                
+                self._brightness_proccess = [self.image.copy()]
+                self._sharpness_proccess = [self.image.copy()]
 
                 # Update plot
                 self.ax.clear()
@@ -158,34 +183,106 @@ class App:
             except Exception as e:
                 print("Error during cropping:", e)
 
+
     def enhance_image(self):
-        base_image = self.image.copy()
-        brightness_enhancement = cv.convertScaleAbs(base_image, alpha=1.5, beta=0)
-        sharpness_enhancement = cv.addWeighted(base_image, 1.5, base_image, -0.5, 0)
+        for i in range(self.MAX_STEPS):
+            bright_img = self.brightness_enhancement(self.image.copy(), i)
+            sharp_img = self.sharpness_enhancement(self.image.copy(), i)
 
-        self._brightness_proccess.append(brightness_enhancement)
-        self._sharpness_proccess.append(sharpness_enhancement)
-        
-        self.brightness_canvas.destroy()
-        self.sharpness_canvas.destroy()
+            self._brightness_proccess.append(bright_img)
+            self._sharpness_proccess.append(sharp_img)
 
-        self.brightness_canvas = FigureCanvasTkAgg(plt.Figure(figsize=(3, 3), dpi=100), master=self.brightness_frame)
+        # Safely destroy existing canvases
+        if isinstance(self.brightness_canvas, FigureCanvasTkAgg):
+            self.brightness_canvas.get_tk_widget().destroy()
+            self.brightness_canvas = None
+
+        if isinstance(self.sharpness_canvas, FigureCanvasTkAgg):
+            self.sharpness_canvas.get_tk_widget().destroy()
+            self.sharpness_canvas = None
+
+        # Brightness canvas
+        self.brightness_canvas = FigureCanvasTkAgg(plt.Figure(figsize=(3, 3), dpi=100), master=self.output_brightness_frame)
         self.brightness_canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
         self.brightness_ax = self.brightness_canvas.figure.add_subplot(111)
         self.brightness_ax.set_title("Brightness Enhancement")
-        self.brightness_ax.imshow(brightness_enhancement)
+        self.brightness_ax.imshow(self._brightness_proccess[4])
+        self.brightness_ax.axis("off")
         self.brightness_canvas.draw()
 
-        self.sharpness_canvas = FigureCanvasTkAgg(plt.Figure(figsize=(3, 3), dpi=100), master=self.sharpness_frame)
+        # Sharpness canvas
+        self.sharpness_canvas = FigureCanvasTkAgg(plt.Figure(figsize=(3, 3), dpi=100), master=self.output_sharpness_frame)
         self.sharpness_canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
         self.sharpness_ax = self.sharpness_canvas.figure.add_subplot(111)
         self.sharpness_ax.set_title("Sharpness Enhancement")
-        self.sharpness_ax.imshow(sharpness_enhancement)
+        self.sharpness_ax.imshow(self._sharpness_proccess[4])
+        self.sharpness_ax.axis("off")
         self.sharpness_canvas.draw()
 
-        print(self._brightness_proccess)
-        print(self._sharpness_proccess)
+        # print(self._brightness_proccess)
+        # print(self._sharpness_proccess)
+
+        # View Transformation
+
+        # Brigthness
+        if hasattr(self, "tf_brigthness_canvas"):
+            self.tf_brigthness_canvas.get_tk_widget().destroy()
+
+        self.tf_brigthness_canvas = FigureCanvasTkAgg(plt.Figure(figsize=(3, 3), dpi=100), master=self.view_brightness_frame)
+        self.tf_brigthness_canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
+        self.tf_brightness_ax = self.tf_brigthness_canvas.figure.add_subplot(111)
+        self.tf_brightness_ax.set_title("Brightness Transformation")
+
+        self.start_brightness_slideshow()
+
+        # sharpness
+        if hasattr(self, "tf_sharpness_canvas"):
+            self.tf_sharpness_canvas.get_tk_widget().destroy()
+
+        self.tf_sharpness_canvas = FigureCanvasTkAgg(plt.Figure(figsize=(3, 3), dpi=100), master=self.view_sharpness_frame)
+        self.tf_sharpness_canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
+        self.tf_sharpness_ax = self.tf_sharpness_canvas.figure.add_subplot(111)
+        self.tf_sharpness_ax.set_title("Sharpness Transformation")
+
+        self.start_sharpness_slideshow()
+
+    def brightness_enhancement(self, base_img, step:int):
+        alpha = 1.0  # Keep contrast constant
+        beta = step * 25  # Increase brightness linearly
+        return cv.convertScaleAbs(base_img, alpha=alpha, beta=beta)
         
+    def sharpness_enhancement(self, base_img, step:int):
+        factor = 1.0 + (step * 0.2)  # 1.0 to 1.8
+        return cv.addWeighted(base_img, factor, base_img, -0.5, 0)
+
+    def start_brightness_slideshow(self, step = 0):
+        if not self._brightness_proccess:
+            return
+
+        step %= self.MAX_STEPS
+
+        self.tf_brightness_ax.clear()
+        self.tf_brightness_ax.set_title("Brightness Transformation")
+        self.tf_brightness_ax.axis("off")
+        self.tf_brightness_ax.imshow(self._brightness_proccess[step])
+        self.tf_brigthness_canvas.draw()
+
+        self.master.after(1000, lambda: self.start_brightness_slideshow(step + 1))
+
+    def start_sharpness_slideshow(self, step=0):
+        if not self._sharpness_proccess:
+            return
+
+        step %= self.MAX_STEPS
+
+        self.tf_sharpness_ax.clear()
+        self.tf_sharpness_ax.set_title("Sharpness Transformation")
+        self.tf_sharpness_ax.axis("off")
+        self.tf_sharpness_ax.imshow(self._sharpness_proccess[step])
+        self.tf_sharpness_canvas.draw()
+
+        self.master.after(1000, lambda: self.start_sharpness_slideshow(step + 1))
+
 if __name__ == "__main__":
     root = ctk.CTk()
     app = App(root)
