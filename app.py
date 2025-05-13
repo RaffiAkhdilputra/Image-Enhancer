@@ -312,7 +312,7 @@ class App:
     def sharpness_enhancement(self, base_img, step:int):
         # factor = 1.0 + (step * 0.2)
         # return cv.addWeighted(base_img, factor, base_img, -0.5, 0)
-        
+
         blurred = cv.GaussianBlur(base_img, (3, 3), 0)
 
         amount = 0.5 + (step * 2)
@@ -346,7 +346,7 @@ class App:
         self.tf_sharpness_ax.imshow(self._sharpness_proccess[step])
         self.tf_sharpness_canvas.draw()
 
-        self.sharpness_after_id = self.master.after(1000, lambda: self.start_sharpness_slideshow(step + 1))
+        self.sharpness_after_id = self.master.after(500, lambda: self.start_sharpness_slideshow(step + 1))
 
     def stop_brightness_slideshow(self):
         if self.brightness_after_id is not None:
