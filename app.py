@@ -310,8 +310,16 @@ class App:
         return cv.convertScaleAbs(base_img, alpha=alpha, beta=beta)
         
     def sharpness_enhancement(self, base_img, step:int):
-        factor = 1.0 + (step * 0.2)
-        return cv.addWeighted(base_img, factor, base_img, -0.5, 0)
+        # factor = 1.0 + (step * 0.2)
+        # return cv.addWeighted(base_img, factor, base_img, -0.5, 0)
+        
+        blurred = cv.GaussianBlur(base_img, (3, 3), 0)
+
+        amount = 0.5 + (step * 2)
+        sharpened = cv.addWeighted(base_img, 1 + amount, blurred, -amount, 0)
+
+        sharpened = np.clip(sharpened, 0, 255).astype(np.uint8)
+        return sharpened
 
     def start_brightness_slideshow(self, step=0):
         if not self._brightness_proccess:
@@ -324,7 +332,7 @@ class App:
         self.tf_brightness_ax.imshow(self._brightness_proccess[step])
         self.tf_brigthness_canvas.draw()
 
-        self.brightness_after_id = self.master.after(1000, lambda: self.start_brightness_slideshow(step + 1))
+        self.brightness_after_id = self.master.after(500, lambda: self.start_brightness_slideshow(step + 1))
 
 
     def start_sharpness_slideshow(self, step=0):
